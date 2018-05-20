@@ -11,51 +11,53 @@ import (
 type gpuMode uint8
 
 const (
-	HBLANK gpuMode = 0x00
-	VBLANK gpuMode = 0x01
-	OAM    gpuMode = 0x02
-	VRAM   gpuMode = 0x03
+	hblank gpuMode = 0x00
+	vblank gpuMode = 0x01
+	oam    gpuMode = 0x02
+	vram   gpuMode = 0x03
 )
 
 const (
-	LCD_STATUS_ADDR  = 0xff41
-	SCAN_LINE_ADDR   = 0xff44
-	GPU_CONTROL_ADDR = 0xff40
+	lcdStatusAddr  = 0xff41
+	scanLineAddr   = 0xff44
+	gpuControlAddr = 0xff40
 )
 
 var (
+	// Frame is the image produced at every VBLANK period
+	Frame   = image.NewRGBA(image.Rect(0, 0, 160, 144))
 	palette = [4]color.RGBA{
 		color.RGBA{255, 255, 255, 255},
 		color.RGBA{192, 192, 192, 255},
 		color.RGBA{96, 96, 96, 255},
 		color.RGBA{0, 0, 0, 255}}
 	clock       = 456
-	Frame       = image.NewRGBA(image.Rect(0, 0, 160, 144))
 	framebuffer = image.NewRGBA(image.Rect(0, 0, 160, 144))
 )
 
+// Step steps the GPU through time based on the number of cycles provided in argument
 func Step(cyclesEllapsed uint64) {
 	if !isLcdOn() {
 		clock = 456
-		mmu.Write(SCAN_LINE_ADDR, 0)
-		setMode(HBLANK)
+		mmu.Write(scanLineAddr, 0)
+		setMode(hblank)
 		return
 	}
 
-	scanLine := mmu.Read(SCAN_LINE_ADDR)
+	scanLine := mmu.Read(scanLineAddr)
 	previousMode := getMode()
 	requestInterrupt := false
 
 	if scanLine >= 144 {
-		setMode(VBLANK)
+		setMode(vblank)
 		requestInterrupt = isVblankModeInterruptEnabled()
 	} else if clock >= 456-80 {
-		setMode(OAM)
+		setMode(oam)
 		requestInterrupt = isOamModeInterruptEnabled()
 	} else if clock >= 456-80-172 {
-		setMode(VRAM)
+		setMode(vram)
 	} else {
-		setMode(HBLANK)
+		setMode(hblank)
 		requestInterrupt = isHblankModeInterruptEnabled()
 	}
 
@@ -75,14 +77,14 @@ func Step(cyclesEllapsed uint64) {
 	clock -= int(cyclesEllapsed)
 	if clock <= 0 {
 		clock += 456
-		mmu.RAM[SCAN_LINE_ADDR]++
-		scanLine = mmu.Read(SCAN_LINE_ADDR)
+		mmu.RAM[scanLineAddr]++
+		scanLine = mmu.Read(scanLineAddr)
 		if scanLine == 144 {
 			interrupts.WriteVblankInterrupt()
 		} else if scanLine > 153 {
 			Frame = framebuffer
 			framebuffer = image.NewRGBA(image.Rect(0, 0, 160, 144))
-			mmu.Write(SCAN_LINE_ADDR, 0)
+			mmu.Write(scanLineAddr, 0)
 			renderScanLine(0)
 		} else if scanLine < 144 {
 			renderScanLine(scanLine)
@@ -91,49 +93,49 @@ func Step(cyclesEllapsed uint64) {
 }
 
 func isHblankModeInterruptEnabled() bool {
-	return mmu.Read(LCD_STATUS_ADDR)&0x08 == 0x08
+	return mmu.Read(lcdStatusAddr)&0x08 == 0x08
 }
 
 func isVblankModeInterruptEnabled() bool {
-	return mmu.Read(LCD_STATUS_ADDR)&0x10 == 0x10
+	return mmu.Read(lcdStatusAddr)&0x10 == 0x10
 }
 
 func isOamModeInterruptEnabled() bool {
-	return mmu.Read(LCD_STATUS_ADDR)&0x20 == 0x20
+	return mmu.Read(lcdStatusAddr)&0x20 == 0x20
 }
 
 func isCoincidenceInterruptEnabled() bool {
-	return mmu.Read(LCD_STATUS_ADDR)&0x40 == 0x40
+	return mmu.Read(lcdStatusAddr)&0x40 == 0x40
 }
 
 func getMode() gpuMode {
-	status := mmu.Read(LCD_STATUS_ADDR)
+	status := mmu.Read(lcdStatusAddr)
 	mode := status & 0x03
 	return gpuMode(mode)
 }
 
 func setMode(mode gpuMode) {
-	status := mmu.Read(LCD_STATUS_ADDR)
+	status := mmu.Read(lcdStatusAddr)
 	status &= 0xfc
-	mmu.Write(LCD_STATUS_ADDR, status|uint8(mode))
+	mmu.Write(lcdStatusAddr, status|uint8(mode))
 }
 
 func setCoincidenceStatus() {
-	status := mmu.Read(LCD_STATUS_ADDR)
-	mmu.Write(LCD_STATUS_ADDR, status|0x04)
+	status := mmu.Read(lcdStatusAddr)
+	mmu.Write(lcdStatusAddr, status|0x04)
 }
 
 func resetCoincidenceStatus() {
-	status := mmu.Read(LCD_STATUS_ADDR)
-	mmu.Write(LCD_STATUS_ADDR, status&0xfb)
+	status := mmu.Read(lcdStatusAddr)
+	mmu.Write(lcdStatusAddr, status&0xfb)
 }
 
 func isLcdOn() bool {
-	return mmu.Read(GPU_CONTROL_ADDR)&0x80 == 0x80
+	return mmu.Read(gpuControlAddr)&0x80 == 0x80
 }
 
 func renderScanLine(currentLine uint8) {
-	control := mmu.Read(GPU_CONTROL_ADDR)
+	control := mmu.Read(gpuControlAddr)
 	if control&0x01 == 0x01 {
 		renderTiles(control, currentLine)
 	}
@@ -152,7 +154,7 @@ func renderTiles(control uint8, currentLine uint8) {
 	usingWindow := false
 
 	if control&0x20 == 0x20 {
-		if windowY <= mmu.Read(SCAN_LINE_ADDR) {
+		if windowY <= mmu.Read(scanLineAddr) {
 			usingWindow = true
 		}
 	}

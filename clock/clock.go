@@ -6,44 +6,46 @@ import (
 )
 
 const (
-	DIVIDER_ADDR       = 0xff04
-	COUNTER_ADDR       = 0xff05
-	MODULO_ADDR        = 0xff06
-	TIMER_CONTROL_ADDR = 0xff07
+	dividerAddr      = 0xff04
+	counterAddr      = 0xff05
+	moduloAddr       = 0xff06
+	timerControlAddr = 0xff07
 )
 
 var (
-	timerCounter   int = 1024
-	dividerCounter int = 0
+	timerCounter   = 1024
+	dividerCounter int
 )
 
+// Init initializes the clock with SpecialWriters in the mmu
 func Init() {
-	mmu.RegisterSpecialWrite(DIVIDER_ADDR,
+	mmu.RegisterSpecialWrite(dividerAddr,
 		func(addr uint16, value uint8) {
-			mmu.RAM[DIVIDER_ADDR] = 0
+			mmu.RAM[dividerAddr] = 0
 			dividerCounter = 0
 			timerCounter = getTimerFrequency()
 		})
-	mmu.RegisterSpecialWrite(COUNTER_ADDR,
+	mmu.RegisterSpecialWrite(counterAddr,
 		func(addr uint16, value uint8) {
-			mmu.RAM[COUNTER_ADDR] = value
+			mmu.RAM[counterAddr] = value
 			timerCounter = getTimerFrequency()
 		})
-	mmu.RegisterSpecialWrite(TIMER_CONTROL_ADDR,
+	mmu.RegisterSpecialWrite(timerControlAddr,
 		func(addr uint16, value uint8) {
-			old := mmu.RAM[TIMER_CONTROL_ADDR]
-			mmu.RAM[TIMER_CONTROL_ADDR] = value
+			old := mmu.RAM[timerControlAddr]
+			mmu.RAM[timerControlAddr] = value
 			if old != value {
 				timerCounter = getTimerFrequency()
 			}
 		})
 }
 
+// Tick steps the clock through time based on the number of cycles provided in argument
 func Tick(cycles uint64) {
 	dividerCounter += int(cycles)
 	if dividerCounter >= 255 {
 		dividerCounter -= 255
-		mmu.RAM[DIVIDER_ADDR]++
+		mmu.RAM[dividerAddr]++
 	}
 	if isTimerRunning() {
 		timerCounter -= int(cycles)
@@ -55,11 +57,11 @@ func Tick(cycles uint64) {
 }
 
 func isTimerRunning() bool {
-	return mmu.Read(TIMER_CONTROL_ADDR)&0x04 == 0x04
+	return mmu.Read(timerControlAddr)&0x04 == 0x04
 }
 
 func getTimerFrequency() int {
-	switch mmu.Read(TIMER_CONTROL_ADDR) & 0x03 {
+	switch mmu.Read(timerControlAddr) & 0x03 {
 	case 0x0:
 		return 1024
 	case 0x1:
@@ -74,12 +76,12 @@ func getTimerFrequency() int {
 }
 
 func incrementTimer() {
-	timerVal := mmu.Read(COUNTER_ADDR)
+	timerVal := mmu.Read(counterAddr)
 	if timerVal == 255 {
-		modulo := mmu.Read(MODULO_ADDR)
-		mmu.Write(COUNTER_ADDR, modulo)
+		modulo := mmu.Read(moduloAddr)
+		mmu.Write(counterAddr, modulo)
 		interrupts.WriteTimerInterrupt()
 	} else {
-		mmu.Write(COUNTER_ADDR, timerVal+1)
+		mmu.Write(counterAddr, timerVal+1)
 	}
 }

@@ -5,13 +5,17 @@ import (
 )
 
 var (
+	// InterruptsEnabled indicates whether interrupts are enabled (IME)
+	InterruptsEnabled bool
+	// EnablingInterrupts indicates whether interrupts should be turned on during the ISR
+	EnablingInterrupts bool
+	// IsHalted indicates that the CPU is in a halted state
+	IsHalted               bool
 	a, b, c, d, e, h, l, f uint8
 	pc, sp                 uint16
-	InterruptsEnabled      bool
-	EnablingInterrupts     bool
-	IsHalted               bool
 )
 
+// Init initializes the CPU with the post-boot ROM register values
 func Init() {
 	a = 1
 	b = 0
@@ -25,15 +29,16 @@ func Init() {
 	sp = 0xfffe
 }
 
+// Step advances the CPU by one instruction and returns the corresponding number of hardware cycles
 func Step() uint64 {
 	if IsHalted {
 		return 4
-	} else {
-		opCode := mmu.Read(pc)
-		return executeInstruction(opCode)
 	}
+	opCode := mmu.Read(pc)
+	return executeInstruction(opCode)
 }
 
+// Call pushes the current Program Counter to the stack and sets it to the given address
 func Call(address uint16) {
 	sp -= 2
 	mmu.WriteWord(sp, pc)

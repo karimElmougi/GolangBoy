@@ -9,19 +9,19 @@ import (
 type cartridgeType uint8
 
 const (
-	MBC0 cartridgeType = 0
-	MBC1 cartridgeType = 1
-	MBC2 cartridgeType = 2
-	MBC3 cartridgeType = 3
-	MBC4 cartridgeType = 4
-	MBC5 cartridgeType = 5
+	mbc0 cartridgeType = 0
+	mbc1 cartridgeType = 1
+	mbc2 cartridgeType = 2
+	mbc3 cartridgeType = 3
+	mbc4 cartridgeType = 4
+	mbc5 cartridgeType = 5
 )
 
 var (
 	rom               []uint8
 	ram               []uint8
 	romBank           uint16 = 1
-	ramBank           uint16 = 0
+	ramBank           uint16
 	cartType          cartridgeType
 	romBankingEnabled bool
 	ramEnabled        bool
@@ -29,6 +29,7 @@ var (
 	ramChanged        bool
 )
 
+// Load opens the ROM and its accompagying save file (if any) and loads them to cartridge rom and ram
 func Load(romName string) {
 	data, err := ioutil.ReadFile(romName)
 	if err != nil {
@@ -41,20 +42,20 @@ func Load(romName string) {
 	mbcFlag := rom[0x147]
 
 	if mbcFlag == 0x00 || (mbcFlag >= 0x08 && mbcFlag <= 0x0d) {
-		cartType = MBC0
+		cartType = mbc0
 	} else if mbcFlag >= 0x01 && mbcFlag <= 0x03 {
-		cartType = MBC1
+		cartType = mbc1
 		// } else if mbcFlag >= 0x05 && mbcFlag <= 0x06 {
-		//     cartType = MBC2
+		//     cartType = mbc2
 	} else if mbcFlag >= 0x0f && mbcFlag <= 0x13 {
-		cartType = MBC3
+		cartType = mbc3
 		// } else if mbcFlag >= 0x15 && mbcFlag <= 0x17 {
-		//     cartType = MBC4
+		//     cartType = mbc4
 		// } else if mbcFlag >= 0x19 && mbcFlag <= 0x1e {
-		//     cartType = MBC5
+		//     cartType = mbc5
 	} else {
 		fmt.Printf("Possibly unsupported cartridge type (0x%x)", mbcFlag)
-		cartType = MBC0
+		cartType = mbc0
 	}
 
 	switch mbcFlag {
@@ -75,6 +76,7 @@ func Load(romName string) {
 	}
 }
 
+// Read fetches the content of the ROM at the given address
 func Read(addr uint16) uint8 {
 	if addr < 0x4000 {
 		return rom[addr]
@@ -83,29 +85,32 @@ func Read(addr uint16) uint8 {
 	return rom[newAddr+uint32(romBank)*0x4000]
 }
 
-func ReadFromRam(addr uint16) uint8 {
+// ReadFromRAM fetches the content of the cartridge's RAM at the given address
+func ReadFromRAM(addr uint16) uint8 {
 	newAddr := addr - 0xa000
 	return ram[newAddr+ramBank*0x2000]
 }
 
+// Write writes the given value at the given address in the ROM. The effect depends on the type of cartridge
 func Write(addr uint16, value uint8) {
 	switch cartType {
-	case MBC0:
+	case mbc0:
 		return
-	case MBC1:
-		writeMBC1(addr, value)
-	case MBC2:
-		//writeMBC2(addr, value)
-	case MBC3:
-		writeMBC3(addr, value)
-	case MBC4:
+	case mbc1:
+		writembc1(addr, value)
+	case mbc2:
+		//writembc2(addr, value)
+	case mbc3:
+		writembc3(addr, value)
+	case mbc4:
 		return
-	case MBC5:
-		//writeMBC5(addr, value)
+	case mbc5:
+		//writembc5(addr, value)
 	}
 }
 
-func WriteToRam(addr uint16, value uint8) {
+// WriteToRAM writes the given value at the given address in the cartridge RAM
+func WriteToRAM(addr uint16, value uint8) {
 	if ramEnabled {
 		ramChanged = true
 		newAddr := addr - 0xa000
@@ -113,7 +118,7 @@ func WriteToRam(addr uint16, value uint8) {
 	}
 }
 
-func writeMBC1(addr uint16, value uint8) {
+func writembc1(addr uint16, value uint8) {
 	switch {
 	case addr < 0x2000:
 		enableRAM(addr, value)
@@ -135,7 +140,7 @@ func writeMBC1(addr uint16, value uint8) {
 	}
 }
 
-func writeMBC3(addr uint16, value uint8) {
+func writembc3(addr uint16, value uint8) {
 	switch {
 	case addr < 0x2000:
 		enableRAM(addr, value)
@@ -150,7 +155,7 @@ func writeMBC3(addr uint16, value uint8) {
 }
 
 func enableRAM(addr uint16, value uint8) {
-	if cartType == MBC2 && addr&0x08 == 0x10 {
+	if cartType == mbc2 && addr&0x08 == 0x10 {
 		return
 	}
 
@@ -163,7 +168,7 @@ func enableRAM(addr uint16, value uint8) {
 }
 
 func changeLowerRomBank(value uint8) {
-	if cartType == MBC2 {
+	if cartType == mbc2 {
 		romBank = uint16(value & 0x0f)
 	} else {
 		romBank &= 0xe0

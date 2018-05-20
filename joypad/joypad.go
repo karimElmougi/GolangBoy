@@ -30,12 +30,14 @@ var (
 	}
 )
 
+// Init registers a SpecialReader with the mmu
 func Init() {
 	mmu.RegisterSpecialRead(0xff00, func(addr uint16) uint8 {
 		return getJoypadRegister(mmu.RAM[addr])
 	})
 }
 
+// UpdateInputs checks the state of the GameBoy's inputs and updates the Joypad register accordingly
 func UpdateInputs() {
 	for _, key := range keyBindings {
 		if key.wasPressed() {

@@ -6,16 +6,18 @@ import (
 )
 
 const (
-	IE_FLAG = 0xffff
-	IF_ADDR = 0xff0f
+	ieFlagAddr = 0xffff
+	ifAddr     = 0xff0f
 )
 
+// Init registers a SpecialReader with the mmu
 func Init() {
-	mmu.RegisterSpecialRead(IF_ADDR, func(addr uint16) uint8 {
-		return mmu.RAM[IF_ADDR] | 0xe0
+	mmu.RegisterSpecialRead(ifAddr, func(addr uint16) uint8 {
+		return mmu.RAM[ifAddr] | 0xe0
 	})
 }
 
+// ISR is the Interrupt Service Routine, which handles the servicing of interrupts
 func ISR() {
 	if cpu.EnablingInterrupts {
 		cpu.InterruptsEnabled = true
@@ -42,29 +44,34 @@ func ISR() {
 	}
 }
 
+// WriteVblankInterrupt signals that a VBLANK interrupt has occured
 func WriteVblankInterrupt() {
 	writeInterrupt(0x01)
 }
 
+// WriteLcdInterrupt signals that a LCD interrupt has occured
 func WriteLcdInterrupt() {
 	writeInterrupt(0x02)
 }
 
+// WriteTimerInterrupt signals that a Timer interrupt has occured
 func WriteTimerInterrupt() {
 	writeInterrupt(0x04)
 }
 
+// WriteSerialInterrupt signals that a Serial has occured
 func WriteSerialInterrupt() {
 	writeInterrupt(0x08)
 }
 
+// WriteJoypadInterrupt signals that a Joypad interrupt has occured
 func WriteJoypadInterrupt() {
 	writeInterrupt(0x10)
 }
 
 func writeInterrupt(interruptSignal uint8) {
-	interruptFlags := mmu.Read(IF_ADDR)
-	mmu.Write(IF_ADDR, interruptFlags|interruptSignal)
+	interruptFlags := mmu.Read(ifAddr)
+	mmu.Write(ifAddr, interruptFlags|interruptSignal)
 }
 
 func serviceVblankInterrupt() {
@@ -93,54 +100,54 @@ func serviceInterrupt(interruptAddress uint16, interruptReset uint8) {
 		return
 	}
 	cpu.InterruptsEnabled = false
-	interruptFlags := mmu.Read(IF_ADDR)
+	interruptFlags := mmu.Read(ifAddr)
 	interruptFlags &= interruptReset
-	mmu.Write(IF_ADDR, interruptFlags)
+	mmu.Write(ifAddr, interruptFlags)
 	cpu.Call(interruptAddress)
 }
 
 func isVblankInterruptEnabled() bool {
-	return mmu.Read(IE_FLAG)&0x1 == 0x1
+	return mmu.Read(ieFlagAddr)&0x1 == 0x1
 }
 
 func isLcdInterruptEnabled() bool {
-	return mmu.Read(IE_FLAG)&0x2 == 0x2
+	return mmu.Read(ieFlagAddr)&0x2 == 0x2
 }
 
 func isTimerInterruptEnabled() bool {
-	return mmu.Read(IE_FLAG)&0x4 == 0x4
+	return mmu.Read(ieFlagAddr)&0x4 == 0x4
 }
 
 func isSerialInterruptEnabled() bool {
-	return mmu.Read(IE_FLAG)&0x8 == 0x8
+	return mmu.Read(ieFlagAddr)&0x8 == 0x8
 }
 
 func isJoypadInterruptEnabled() bool {
-	return mmu.Read(IE_FLAG)&0x10 == 0x10
+	return mmu.Read(ieFlagAddr)&0x10 == 0x10
 }
 
 func vblankInterruptOccured() bool {
-	return mmu.Read(IF_ADDR)&0x1 == 0x1
+	return mmu.Read(ifAddr)&0x1 == 0x1
 }
 
 func lcdInterruptOccured() bool {
-	return mmu.Read(IF_ADDR)&0x2 == 0x2
+	return mmu.Read(ifAddr)&0x2 == 0x2
 }
 
 func timerInterruptOccured() bool {
-	return mmu.Read(IF_ADDR)&0x4 == 0x4
+	return mmu.Read(ifAddr)&0x4 == 0x4
 }
 
 func serialInterruptOccured() bool {
-	return mmu.Read(IF_ADDR)&0x8 == 0x8
+	return mmu.Read(ifAddr)&0x8 == 0x8
 }
 
 func joypadInterruptOccured() bool {
-	return mmu.Read(IF_ADDR)&0x10 == 0x10
+	return mmu.Read(ifAddr)&0x10 == 0x10
 }
 
 func interruptsReady() bool {
-	iflag := mmu.Read(IF_ADDR)
-	ie := mmu.Read(IE_FLAG)
+	iflag := mmu.Read(ifAddr)
+	ie := mmu.Read(ieFlagAddr)
 	return (iflag & ie) != 0x00
 }

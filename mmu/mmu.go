@@ -65,7 +65,7 @@ func Read(addr uint16) uint8 {
 	if addr >= 0x0000 && addr <= 0x7fff {
 		return cartridge.Read(addr)
 	} else if addr >= 0xa000 && addr <= 0xbfff {
-		return cartridge.ReadFromRam(addr)
+		return cartridge.ReadFromRAM(addr)
 	}
 	return RAM[addr]
 }
@@ -80,7 +80,7 @@ func Write(addr uint16, value uint8) {
 	if addr >= 0x0000 && addr <= 0x7fff {
 		cartridge.Write(addr, value)
 	} else if addr >= 0xa000 && addr <= 0xbfff {
-		cartridge.WriteToRam(addr, value)
+		cartridge.WriteToRAM(addr, value)
 	} else if addr == 0xff02 {
 		return
 	} else if addr == 0xff44 {

@@ -10,6 +10,7 @@ import (
 	"github.com/karimElmougi/GolangBoy/mmu"
 )
 
+// Boot initializes all the components of the GameBoy
 func Boot(romName string) {
 	mmu.Init()
 	cartridge.Load(romName)
@@ -19,6 +20,7 @@ func Boot(romName string) {
 	cpu.Init()
 }
 
+// Run steps the entire system by one second
 func Run() {
 	cyclesPerSecond := uint64(4194304 / 60)
 	cyclesEllapsed := uint64(0)
