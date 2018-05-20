@@ -20,7 +20,7 @@ func Boot(romName string) {
 }
 
 func Run() {
-	cyclesPerSecond := uint64(4194304 / 30)
+	cyclesPerSecond := uint64(4194304 / 60)
 	cyclesEllapsed := uint64(0)
 	for i := uint64(0); i < cyclesPerSecond; i += cyclesEllapsed {
 		cyclesEllapsed = cpu.Step()

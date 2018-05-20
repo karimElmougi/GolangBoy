@@ -57,7 +57,6 @@ func Step(cyclesEllapsed uint64) {
 	} else {
 		setMode(HBLANK)
 		requestInterrupt = isHblankModeInterruptEnabled()
-		interrupts.WriteLcdInterrupt()
 	}
 
 	if requestInterrupt && getMode() != previousMode {

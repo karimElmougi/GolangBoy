@@ -88,8 +88,8 @@ func serviceJoypadInterrupt() {
 }
 
 func serviceInterrupt(interruptAddress uint16, interruptReset uint8) {
+	cpu.IsHalted = false
 	if !cpu.InterruptsEnabled && cpu.IsHalted {
-		cpu.IsHalted = false
 		return
 	}
 	cpu.InterruptsEnabled = false
