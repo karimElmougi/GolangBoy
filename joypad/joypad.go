@@ -17,8 +17,8 @@ func (k *keyBinding) wasPressed() bool {
 }
 
 var (
-	inputMask   uint8        = 0xff
-	keyBindings []keyBinding = []keyBinding{
+	inputMask   uint8 = 0xff
+	keyBindings       = []keyBinding{
 		keyBinding{ebiten.KeyS, 0x01, false},
 		keyBinding{ebiten.KeyA, 0x02, false},
 		keyBinding{ebiten.KeyQ, 0x04, false},

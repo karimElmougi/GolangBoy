@@ -24,13 +24,14 @@ const (
 )
 
 var (
-	palette [4]color.RGBA = [4]color.RGBA{
+	palette = [4]color.RGBA{
 		color.RGBA{255, 255, 255, 255},
 		color.RGBA{192, 192, 192, 255},
 		color.RGBA{96, 96, 96, 255},
 		color.RGBA{0, 0, 0, 255}}
-	clock       int         = 456
-	FrameBuffer *image.RGBA = image.NewRGBA(image.Rect(0, 0, 160, 144))
+	clock       = 456
+	Frame       = image.NewRGBA(image.Rect(0, 0, 160, 144))
+	framebuffer = image.NewRGBA(image.Rect(0, 0, 160, 144))
 )
 
 func Step(cyclesEllapsed uint64) {
@@ -80,6 +81,8 @@ func Step(cyclesEllapsed uint64) {
 		if scanLine == 144 {
 			interrupts.WriteVblankInterrupt()
 		} else if scanLine > 153 {
+			Frame = framebuffer
+			framebuffer = image.NewRGBA(image.Rect(0, 0, 160, 144))
 			mmu.Write(SCAN_LINE_ADDR, 0)
 			renderScanLine(0)
 		} else if scanLine < 144 {
@@ -179,36 +182,36 @@ func renderTiles(control uint8, currentLine uint8) {
 
 	var tileRow = uint16(yPos/8) * 32
 
-	for pixel := 0; pixel < 160; pixel++ {
-		xPos := pixel + int(scrollX)
+	for pixel := uint8(0); pixel < 160; pixel++ {
+		xPos := pixel + scrollX
 
-		if usingWindow && pixel >= int(windowX) {
-			xPos = pixel - int(windowX)
+		if usingWindow && pixel >= windowX {
+			xPos = pixel - windowX
 		}
 		tileCol := uint16(xPos / 8)
 		tileAddress := backgroundMemory + tileRow + tileCol
 		tileLocation := tileData
 		if unsig {
-			tileNum := uint16(mmu.Read(tileAddress))
+			tileNum := uint16(mmu.RAM[tileAddress])
 			tileLocation = tileLocation + uint16(tileNum*16)
 		} else {
-			tileNum := int16(int8(mmu.Read(tileAddress)))
+			tileNum := int16(int8(mmu.RAM[tileAddress]))
 			tileLocation = uint16(int32(tileLocation) + int32((tileNum+128)*16))
 		}
 
 		var line = (yPos % 8) * 2
-		data1 := mmu.Read(tileLocation + uint16(line))
-		data2 := mmu.Read(tileLocation + uint16(line) + 1)
+		data1 := mmu.RAM[tileLocation+uint16(line)]
+		data2 := mmu.RAM[tileLocation+uint16(line)+1]
 
 		colourBit := byte(int8((xPos%8)-7) * -1)
 		colourNum := (((data2 >> colourBit) & 1) << 1) | ((data1 >> colourBit) & 1)
 
-		FrameBuffer.Set(pixel, int(currentLine), palette[colourNum])
+		framebuffer.Set(int(pixel), int(currentLine), palette[colourNum])
 	}
 }
 
 func renderSprites(control uint8, currentLine int) {
-	var ySize int = 8
+	ySize := 8
 	if control&0x04 == 0x04 {
 		ySize = 16
 	}
@@ -248,9 +251,9 @@ func renderSprites(control uint8, currentLine int) {
 			pixel := int(xPos) + int(7-tilePixel)
 			if pixel >= 0 && pixel < 160 {
 				priority := attributes&0x80 != 0x80
-				bgTileColour := FrameBuffer.At(pixel, int(currentLine))
+				bgTileColour := framebuffer.At(pixel, int(currentLine))
 				if priority || bgTileColour == palette[0] {
-					FrameBuffer.Set(pixel, int(currentLine), palette[colourNum])
+					framebuffer.Set(pixel, int(currentLine), palette[colourNum])
 				}
 			}
 		}

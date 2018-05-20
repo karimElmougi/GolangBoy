@@ -46,8 +46,8 @@ func Load(romName string) {
 		cartType = MBC1
 		// } else if mbcFlag >= 0x05 && mbcFlag <= 0x06 {
 		//     cartType = MBC2
-		// } else if mbcFlag >= 0x0f && mbcFlag <= 0x13 {
-		//     cartType = MBC3
+	} else if mbcFlag >= 0x0f && mbcFlag <= 0x13 {
+		cartType = MBC3
 		// } else if mbcFlag >= 0x15 && mbcFlag <= 0x17 {
 		//     cartType = MBC4
 		// } else if mbcFlag >= 0x19 && mbcFlag <= 0x1e {
@@ -79,8 +79,8 @@ func Read(addr uint16) uint8 {
 	if addr < 0x4000 {
 		return rom[addr]
 	}
-	newAddr := addr - 0x4000
-	return rom[newAddr+romBank*0x4000]
+	newAddr := uint32(addr) - 0x4000
+	return rom[newAddr+uint32(romBank)*0x4000]
 }
 
 func ReadFromRam(addr uint16) uint8 {
@@ -97,7 +97,7 @@ func Write(addr uint16, value uint8) {
 	case MBC2:
 		//writeMBC2(addr, value)
 	case MBC3:
-		//writeMBC3(addr, value)
+		writeMBC3(addr, value)
 	case MBC4:
 		return
 	case MBC5:
@@ -117,24 +117,35 @@ func writeMBC1(addr uint16, value uint8) {
 	switch {
 	case addr < 0x2000:
 		enableRAM(addr, value)
-
-	case addr >= 0x200 && addr < 0x4000:
+	case addr < 0x4000:
 		changeLowerRomBank(value)
-
-	case addr >= 0x4000 && addr < 0x6000:
+	case addr < 0x6000:
 		if romBankingEnabled {
 			changeUpperRomBank(value)
 		} else {
 			ramBank = uint16(value & 0x03)
 		}
-
-	case addr >= 0x6000 && addr < 0x8000:
+	case addr < 0x8000:
 		if value&0x01 == 0 {
 			romBankingEnabled = true
 			ramBank = 0
 		} else {
 			romBankingEnabled = false
 		}
+	}
+}
+
+func writeMBC3(addr uint16, value uint8) {
+	switch {
+	case addr < 0x2000:
+		enableRAM(addr, value)
+	case addr < 0x4000:
+		romBank = uint16(value & 0x7f)
+		if romBank == 0 {
+			romBank = 1
+		}
+	case addr < 0x6000:
+		ramBank = uint16(value) & 0x03
 	}
 }
 

@@ -4,15 +4,25 @@ import (
 	"github.com/karimElmougi/GolangBoy/cartridge"
 )
 
+type specialReader struct {
+	address uint16
+	read    func(uint16) uint8
+}
+
+type specialWriter struct {
+	address uint16
+	write   func(uint16, uint8)
+}
+
 var (
 	RAM          [65536]uint8
-	specialWrite map[uint16]func(uint16, uint8)
-	specialRead  map[uint16]func(uint16) uint8
+	specialRead  []specialReader
+	specialWrite []specialWriter
 )
 
 func Init() {
-	specialWrite = make(map[uint16]func(uint16, uint8))
-	specialRead = make(map[uint16]func(uint16) uint8)
+	specialRead = make([]specialReader, 0)
+	specialWrite = make([]specialWriter, 0)
 
 	RAM[0xff0f] = 0xe1
 	RAM[0xff10] = 0x80
@@ -39,16 +49,18 @@ func Init() {
 }
 
 func RegisterSpecialRead(addr uint16, f func(uint16) uint8) {
-	specialRead[addr] = f
+	specialRead = append(specialRead, specialReader{addr, f})
 }
 
 func RegisterSpecialWrite(addr uint16, f func(uint16, uint8)) {
-	specialWrite[addr] = f
+	specialWrite = append(specialWrite, specialWriter{addr, f})
 }
 
 func Read(addr uint16) uint8 {
-	if f, ok := specialRead[addr]; ok {
-		return f(addr)
+	for _, r := range specialRead {
+		if addr == r.address {
+			return r.read(addr)
+		}
 	}
 	if addr >= 0x0000 && addr <= 0x7fff {
 		return cartridge.Read(addr)
@@ -59,9 +71,11 @@ func Read(addr uint16) uint8 {
 }
 
 func Write(addr uint16, value uint8) {
-	if f, ok := specialWrite[addr]; ok {
-		f(addr, value)
-		return
+	for _, r := range specialWrite {
+		if addr == r.address {
+			r.write(addr, value)
+			return
+		}
 	}
 	if addr >= 0x0000 && addr <= 0x7fff {
 		cartridge.Write(addr, value)

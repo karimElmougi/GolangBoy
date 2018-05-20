@@ -802,9 +802,8 @@ func retc(registers ...*uint8) uint64 {
 
 func retcc(condition bool) uint64 {
 	if condition {
-		pc = mmu.ReadWord(sp)
+		pc = mmu.ReadWord(sp) - 1
 		sp += 2
-		pc--
 		return 12
 	}
 	return 0

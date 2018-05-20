@@ -1,7 +1,6 @@
 package gameboy
 
 import (
-	"github.com/hajimehoshi/ebiten"
 	"github.com/karimElmougi/GolangBoy/cartridge"
 	"github.com/karimElmougi/GolangBoy/clock"
 	"github.com/karimElmougi/GolangBoy/cpu"
@@ -20,9 +19,8 @@ func Boot(romName string) {
 	cpu.Init()
 }
 
-func Run(screen *ebiten.Image) error {
-	joypad.UpdateInputs()
-	cyclesPerSecond := uint64(4194304 / 60)
+func Run() {
+	cyclesPerSecond := uint64(4194304 / 30)
 	cyclesEllapsed := uint64(0)
 	for i := uint64(0); i < cyclesPerSecond; i += cyclesEllapsed {
 		cyclesEllapsed = cpu.Step()
@@ -30,7 +28,4 @@ func Run(screen *ebiten.Image) error {
 		gpu.Step(cyclesEllapsed)
 		interrupts.ISR()
 	}
-	img, _ := ebiten.NewImageFromImage(gpu.FrameBuffer, ebiten.FilterDefault)
-	screen.DrawImage(img, &ebiten.DrawImageOptions{})
-	return nil
 }
