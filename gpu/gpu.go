@@ -202,10 +202,10 @@ func renderTiles(control uint8, currentLine uint8) {
 		data1 := mmu.RAM[tileLocation+uint16(line)]
 		data2 := mmu.RAM[tileLocation+uint16(line)+1]
 
-		colourBit := byte(int8((xPos%8)-7) * -1)
+		colourBit := uint8(int8((xPos%8)-7) * -1)
 		colourNum := (((data2 >> colourBit) & 1) << 1) | ((data1 >> colourBit) & 1)
 
-		framebuffer.Set(int(pixel), int(currentLine), palette[colourNum])
+		framebuffer.Set(int(pixel), int(currentLine), getColour(colourNum, 0xff47))
 	}
 }
 
@@ -235,10 +235,10 @@ func renderSprites(control uint8, currentLine int) {
 		data1 := mmu.Read(dataAddress)
 		data2 := mmu.Read(dataAddress + 1)
 
-		for tilePixel := byte(0); tilePixel < 8; tilePixel++ {
+		for tilePixel := uint8(0); tilePixel < 8; tilePixel++ {
 			colourBit := tilePixel
 			if attributes&0x20 == 0x20 {
-				colourBit = byte(int8(colourBit-7) * -1)
+				colourBit = uint8(int8(colourBit-7) * -1)
 			}
 
 			colourNum := (((data2 >> colourBit) & 1) << 1) | ((data1 >> colourBit) & 1)
@@ -252,9 +252,31 @@ func renderSprites(control uint8, currentLine int) {
 				priority := attributes&0x80 != 0x80
 				bgTileColour := framebuffer.At(pixel, int(currentLine))
 				if priority || bgTileColour == palette[0] {
-					framebuffer.Set(pixel, int(currentLine), palette[colourNum])
+					paletteAddr := uint16(0xff48)
+					if attributes&0x10 == 0x10 {
+						paletteAddr = 0xff49
+					}
+					framebuffer.Set(pixel, int(currentLine), getColour(colourNum, paletteAddr))
 				}
 			}
 		}
 	}
+}
+
+func getColour(colourNum uint8, addr uint16) color.RGBA {
+	customPalette := mmu.Read(addr)
+
+	var i uint8
+	switch colourNum {
+	case 0:
+		i = customPalette&0x02 | customPalette&0x01
+	case 1:
+		i = customPalette&0x08>>2 | customPalette&0x04>>2
+	case 2:
+		i = customPalette&0x20>>4 | customPalette&0x10>>4
+	case 3:
+		i = customPalette&0x80>>6 | customPalette&0x40>>6
+	}
+
+	return palette[i]
 }
